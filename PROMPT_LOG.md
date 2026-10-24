@@ -93,3 +93,20 @@ Add your other proposed tests with fixed values: TC-AS-02, TC-AS-03, TC-OA-03, T
 - **Was it right?** Yes. A one-line fix that explains all 3 failures. Its Entry 1 explanation had already spotted this loop, but called it an "inconsistency", and the first test file even locked it in (expecting 11 rows).
 - **What I did about it:** Applied the one-line fix. 3 schedule tests now pass (3 failed, 25 passed). Committed it on its own as bug fix #2.
 
+## Entry 8
+- **Step:** Diagnose failing tests: bug #3 (remaining_tenure rate)
+- **Context given:** `@loan_calc/calculator.py`, `@tests/test_calculator.py`
+- **Prompt (exact):**
+  > @loan_calc/calculator.py @tests/test_calculator.py test_remaining_tenure_tc_rt_04 fails: remaining_tenure(100_000, 12, 10_000) raises "instalment too small to repay the loan", but the monthly interest is only 1,000. Expected 11 months. Explain the root cause and propose the smallest fix to calculator.py. Show me the change, but don't apply it yet. Don't change the tests.
+- **aXet's answer (short summary):** `remaining_tenure` uses `r = annual_rate / 100`, so 12% p.a. is treated as 12% per month. The guard then sees ₹12,000 of "monthly interest" and wrongly raises. Fix: `r = _monthly_rate(annual_rate)`.
+- **Was it right?** Yes. Reusing `_monthly_rate()` keeps the rate conversion in one place. This only works properly because bug #1 was fixed first; otherwise it would inherit the 4 dp rounding.
+- **What I did about it:** Applied the one-line fix. TC-RT-04 now passes. Committed it on its own as bug fix #3.
+
+## Entry 9
+- **Step:** A test that was wrong (found after fixing bug #3)
+- **Context given:** None (found by reviewing the test after the fix)
+- **Prompt (exact):**
+  > (none: found by reviewing the test myself)
+- **aXet's answer (short summary):** In Entry 5's test file, aXet wrote `remaining_tenure(100_000, 10, 9_000)` and expected "instalment too small".
+- **Was it right?** No. At 10% p.a., monthly interest on ₹1,00,000 is ₹833.33, so ₹9,000 is plenty. The test only passed because of bug #3 (10% was read as 10% per month = ₹10,000). Once the bug was fixed, the test failed. This is the case where the test is wrong, not the code. aXet had also changed it from its own original proposal (TC-RT-03: 12%, ₹900).
+- **What I did about it:** Changed the test back to 12% with a ₹900 instalment (monthly interest ₹1,000, so ₹900 really is too small). Committed it separately from the code fix.
