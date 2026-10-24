@@ -74,3 +74,13 @@ Add your other proposed tests with fixed values: TC-AS-02, TC-AS-03, TC-OA-03, T
 - **aXet's answer (short summary):** Removed the xfail, fixed the schedule-length test (12 rows), restored TC-RT-04, and added the required 9%, 1-month, huge-principal and prepayment-over-balance tests.
 - **Was it right?** Partly. Two tests labelled "TC-AS-02" and "TC-AS-03" weren't the proposed tests: they only compared `outstanding_after` against `amortisation_schedule` (code checking code, with no independent numbers). A comment said "TC-EA-01 + TC-EA-02", but `eligible_amount` wasn't tested or even imported.
 - **What I did about it:** Wrote 5 tests by hand: the real TC-AS-02 and TC-AS-03, plus 3 `eligible_amount` tests with independently calculated values. Result: 28 tests, 8 failing.
+
+## Entry 6
+- **Step:** Diagnose failing tests: bug #1 (monthly rate rounding)
+- **Context given:** `@loan_calc/calculator.py`, `@tests/test_calculator.py`
+- **Prompt (exact):**
+  > @loan_calc/calculator.py @tests/test_calculator.py These two tests fail: test_emi_independent_calc_1m_10pct_240m (gets 9623.73, expected 9650.22) and test_eligible_amount_10pct. Explain the root cause and propose the smallest fix to calculator.py. Show me the change, but don't apply it yet. Don't change the tests.
+- **aXet's answer (short summary):** Both failures come from `_monthly_rate()` doing `round(annual_rate / 1200, 4)`. At 10%, 0.008333… becomes 0.0083, and over 240 months that lowers the EMI to 9623.73. `eligible_amount()` uses the same helper, so it's wrong too. Fix: `return annual_rate / 1200` and keep rounding only on final money values.
+- **Was it right?** Yes, the diagnosis and fix are correct. One small slip: it called it "truncation", but it's rounding (for example, 8.5% gives 0.0070833…, which rounds *up* to 0.0071). Worth noting why the assignment's 9% benchmark never caught this: 9/1200 = 0.0075 exactly, so rounding to 4 dp changes nothing. The same goes for 12% and 0%.
+- **What I did about it:** Applied the fix by hand (one function plus its docstring). Re-ran the tests: the two 10% tests now pass. Committed the fix on its own as bug fix #1.
+
