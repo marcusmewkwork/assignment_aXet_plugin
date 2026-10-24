@@ -157,21 +157,19 @@ def test_prepayment_savings_returns_expected_keys_and_types() -> None:
 
 
 # TC-EA-01 + TC-EA-02 + TC-CO-01 (fees and order with exact values)
+# TC-CO-01: no-fee 12% offer is cheaper than 10% + 2% fee over 12 months
 def test_compare_offers_exact_fees_and_sorted_order() -> None:
-    principal = 200_000
     offers = [
         {"bank": "LowRateHighFee", "rate": 10.0, "tenure": 12, "processing_fee_pct": 2.0},
         {"bank": "HighRateNoFee", "rate": 12.0, "tenure": 12, "processing_fee_pct": 0.0},
     ]
-    out = compare_offers(principal, offers)
+    out = compare_offers(200_000, offers)
 
-    assert out[0]["processing_fee"] == pytest.approx(4000.00, abs=0.0)
-    assert out[1]["processing_fee"] == pytest.approx(0.00, abs=0.0)
-
-    assert out[0]["total_cost"] == pytest.approx(out[0]["total_interest"] + out[0]["processing_fee"], abs=0.0)
-    assert out[1]["total_cost"] == pytest.approx(out[1]["total_interest"] + out[1]["processing_fee"], abs=0.0)
-
-    assert [o["bank"] for o in out] == ["LowRateHighFee", "HighRateNoFee"]
+    assert [o["bank"] for o in out] == ["HighRateNoFee", "LowRateHighFee"]
+    assert out[0]["processing_fee"] == pytest.approx(0.00)
+    assert out[1]["processing_fee"] == pytest.approx(4000.00)
+    assert out[0]["total_cost"] == pytest.approx(13_237.12, abs=0.01)
+    assert out[1]["total_cost"] == pytest.approx(14_998.16, abs=0.01)
 
 
 # TC-CSV-01
