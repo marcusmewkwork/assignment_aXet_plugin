@@ -228,3 +228,8 @@ def test_eligible_amount_zero_rate() -> None:
 # TC-EA-03: spare EMI 10,000 at 10% over 12 months (independent PV calc)
 def test_eligible_amount_10pct() -> None:
     assert eligible_amount(40_000, 10_000, 10, 12) == pytest.approx(113_745.08, abs=1)
+
+# TC-RT-01: nothing left to repay means 0 months
+def test_remaining_tenure_zero_balance() -> None:
+    assert remaining_tenure(0, 10, 1_000) == 0
+
