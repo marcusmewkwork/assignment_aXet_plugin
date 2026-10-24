@@ -148,7 +148,7 @@ def remaining_tenure(balance: float, annual_rate: float, instalment: float) -> i
     Raises:
         ValueError: If instalment is too small to ever reduce principal.
     """
-    r = annual_rate / 100
+    r = _monthly_rate(annual_rate)
     if balance <= 0:
         return 0
     if r == 0:
