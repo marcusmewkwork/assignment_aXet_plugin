@@ -111,6 +111,16 @@ Add your other proposed tests with fixed values: TC-AS-02, TC-AS-03, TC-OA-03, T
 - **Was it right?** No. At 10% p.a., monthly interest on ₹1,00,000 is ₹833.33, so ₹9,000 is plenty. The test only passed because of bug #3 (10% was read as 10% per month = ₹10,000). Once the bug was fixed, the test failed. This is the case where the test is wrong, not the code. aXet had also changed it from its own original proposal (TC-RT-03: 12%, ₹900).
 - **What I did about it:** Changed the test back to 12% with a ₹900 instalment (monthly interest ₹1,000, so ₹900 really is too small). Committed it separately from the code fix.
 
+## Entry 10
+- **Step:** Diagnose failing test: compare_offers (test was wrong)
+- **Context given:** `@loan_calc/calculator.py`, `@tests/test_calculator.py`
+- **Prompt (exact):**
+  > @/loan_calc/calculator.py @/tests/test_calculator.py 
+test_compare_offers_exact_fees_and_sorted_order fails: out[0][“processing_fee”] is 0.0, expected 4000.0. For a principal of 200,000 over 12 months, work out by hand the total interest, processing fee and total cost for both offers (10% with a 2% fee, and 12% with no fee). Then tell me whether the code or the test is wrong. Don’t change any files.
+- **aXet's answer (short summary):** Worked out both offers by hand. Total cost is about ₹15,002.60 for 10% + 2% fee, and about ₹13,231.96 for 12% with no fee. So the no-fee offer is cheaper, and the test's expected order is wrong.
+- **Was it right?** The conclusion was right, but its arithmetic was slightly off. The correct EMIs are 17,583.18 and 17,769.76 (it said 17,583.55 and 17,769.33), giving total costs of ₹14,998.16 and ₹13,237.12. Also, this test came from aXet in the first place: it assumed the lower rate always wins, without checking the fee.
+- **What I did about it:** Fixed the test, not the code: corrected the order, and added exact total-cost checks.
+
 
 
 ## Note on commit history
