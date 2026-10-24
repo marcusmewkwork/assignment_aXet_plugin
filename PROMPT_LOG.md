@@ -57,3 +57,20 @@ Each entry records the exact prompt I typed, what aXet said, and whether it was 
   - it swapped TC-RT-04 to 0%, which avoids the path being tested
   - it left out the required 9% benchmark, 1-month, huge-principal and prepayment-over-balance tests
 - **What I did about it:** Rejected the file as it was. Sent a correction prompt (Entry 5) telling it to test correct behaviour, with no xfail and no changes to calculator.py.
+
+## Entry 5
+- **Step:** Correct the test file
+- **Context given:** `@tests/test_calculator.py`, `@loan_calc/calculator.py`
+- **Prompt (exact):**
+  > @/tests/test_calculator.py @/loan_calc/calculator.py 
+Fix this test file. Tests must check CORRECT loan behaviour, not copy what the current code does. It’s expected that some tests will FAIL; that’s how I find the bugs. Do not use xfail or skip, do not run the tests, and do NOT change calculator.py.
+
+Remove the xfail from the 10% EMI test.
+Delete test_monthly_rate_rounding_to_4_decimals.
+Schedule length: a 12-month loan must have 12 rows, and the last row’s balance must be 0.
+Restore TC-RT-04 as proposed: remaining_tenure(100_000, 12, 10_000) == 11.
+Add the required tests: emi(1_000_000, 9, 240) ≈ 8997.26 (±1); 1-month tenure: emi(10_000, 12, 1) == 10100.00, and its schedule has exactly 1 row with balance 0; huge principal: emi(1_000_000_000_000, 0, 360) ≈ 2777777777.78; prepayment larger than the balance: prepayment_savings(120_000, 0, 12, 1, 200_000) gives months_saved 11, new_tenure 1, interest_saved 0.0.
+Add your other proposed tests with fixed values: TC-AS-02, TC-AS-03, TC-OA-03, TC-PS-02, TC-EA-01, TC-EA-02, and TC-CO-01 with exact fees and order.
+- **aXet's answer (short summary):** Removed the xfail, fixed the schedule-length test (12 rows), restored TC-RT-04, and added the required 9%, 1-month, huge-principal and prepayment-over-balance tests.
+- **Was it right?** Partly. Two tests labelled "TC-AS-02" and "TC-AS-03" weren't the proposed tests: they only compared `outstanding_after` against `amortisation_schedule` (code checking code, with no independent numbers). A comment said "TC-EA-01 + TC-EA-02", but `eligible_amount` wasn't tested or even imported.
+- **What I did about it:** Wrote 5 tests by hand: the real TC-AS-02 and TC-AS-03, plus 3 `eligible_amount` tests with independently calculated values. Result: 28 tests, 8 failing.
