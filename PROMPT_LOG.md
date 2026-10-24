@@ -121,7 +121,15 @@ test_compare_offers_exact_fees_and_sorted_order fails: out[0][“processing_fee�
 - **Was it right?** The conclusion was right, but its arithmetic was slightly off. The correct EMIs are 17,583.18 and 17,769.76 (it said 17,583.55 and 17,769.33), giving total costs of ₹14,998.16 and ₹13,237.12. Also, this test came from aXet in the first place: it assumed the lower rate always wins, without checking the fee.
 - **What I did about it:** Fixed the test, not the code: corrected the order, and added exact total-cost checks.
 
-
+## Entry 11
+- **Step:** Diagnose failing test: prepayment larger than the balance (extra edge-case bug)
+- **Context given:** `@loan_calc/calculator.py`, `@tests/test_calculator.py`
+- **Prompt (exact):**
+  > @/loan_calc/calculator.py @/tests/test_calculator.py 
+test_prepayment_larger_than_balance_at_prepayment_month_required fails: prepayment_savings(120_000, 0, 12, 1, 200_000) gives interest_saved = -90000.0, expected 0.0. Explain the root cause. Then propose two options with their pros and cons: (a) cap the prepayment at the outstanding balance, or (b) raise a ValueError. Show the change for each, but don’t apply anything. Don’t change the tests.
+- **aXet's answer (short summary):** When the prepayment is larger than the balance, the loan is treated as closed, but `new_total` still includes the full prepayment. The ₹90,000 overpayment shows up as "interest", so interest_saved = −90,000. It offered (a) cap the prepayment at the balance, or (b) raise ValueError.
+- **Was it right?** Yes, the diagnosis was correct and both options were reasonable. Its final summary had a garbled diff (lines merged, a stray "javascript" code block), so I used the clearer first version.
+- **What I did about it:** Chose (a), capping, because a bank would only take the payoff amount, and it matches the test. All 28 tests pass. Committed it as a separate fix. Option (b) may come back in the stretch goal (validation).
 
 ## Note on commit history
 Commit `e334ee1` is labelled "Fix: remaining_tenure used annual rate as monthly rate", but it actually contains **bug fix #2** (amortisation schedule `range(1, tenure_months + 1)`). I used the wrong commit message by mistake. The real remaining_tenure fix (bug #3) is the next commit. Each bug is still in its own commit. I didn't rewrite history because it was already pushed.
