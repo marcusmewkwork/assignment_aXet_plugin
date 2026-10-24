@@ -1,16 +1,38 @@
 import math
 from datetime import date
+from typing import Any, Optional
 
 
 DEFAULT_CURRENCY = "INR"
 
 
-def _monthly_rate(annual_rate):
+def _monthly_rate(annual_rate: float) -> float:
+    """Convert an annual interest rate (percent p.a.) to a monthly decimal rate.
+
+    Args:
+        annual_rate: Annual nominal interest rate in percent (e.g. 10.5 for 10.5% p.a.).
+
+    Returns:
+        Monthly interest rate as a decimal, rounded to 4 decimal places.
+    """
     r = round(annual_rate / 1200, 4)
     return r
 
 
-def emi(principal, annual_rate, tenure_months):
+def emi(principal: float, annual_rate: float, tenure_months: int) -> float:
+    """Calculate the monthly EMI (Equated Monthly Instalment) for a loan.
+
+    Args:
+        principal: Loan principal amount.
+        annual_rate: Annual nominal interest rate in percent (e.g. 10 for 10% p.a.).
+        tenure_months: Loan tenure in months.
+
+    Returns:
+        EMI amount rounded to 2 decimal places.
+
+    Raises:
+        ValueError: If tenure_months is not positive or principal is not positive.
+    """
     if tenure_months <= 0:
         raise ValueError("tenure must be positive")
     if principal <= 0:
@@ -22,15 +44,48 @@ def emi(principal, annual_rate, tenure_months):
     return round(principal * r * f / (f - 1), 2)
 
 
-def total_payment(principal, annual_rate, tenure_months):
+def total_payment(principal: float, annual_rate: float, tenure_months: int) -> float:
+    """Compute the total amount repaid over the full tenure.
+
+    Args:
+        principal: Loan principal amount.
+        annual_rate: Annual nominal interest rate in percent.
+        tenure_months: Loan tenure in months.
+
+    Returns:
+        Total payment (sum of all EMIs) rounded to 2 decimal places.
+    """
     return round(emi(principal, annual_rate, tenure_months) * tenure_months, 2)
 
 
-def total_interest(principal, annual_rate, tenure_months):
+def total_interest(principal: float, annual_rate: float, tenure_months: int) -> float:
+    """Compute the total interest payable over the full tenure.
+
+    Args:
+        principal: Loan principal amount.
+        annual_rate: Annual nominal interest rate in percent.
+        tenure_months: Loan tenure in months.
+
+    Returns:
+        Total interest (total payment minus principal) rounded to 2 decimal places.
+    """
     return round(total_payment(principal, annual_rate, tenure_months) - principal, 2)
 
 
-def amortisation_schedule(principal, annual_rate, tenure_months):
+def amortisation_schedule(principal: float, annual_rate: float, tenure_months: int) -> list[dict[str, Any]]:
+    """Build the amortisation schedule (month-by-month breakdown).
+
+    Each row includes the EMI amount, interest component, principal component,
+    and remaining balance after the payment for that month.
+
+    Args:
+        principal: Loan principal amount.
+        annual_rate: Annual nominal interest rate in percent.
+        tenure_months: Loan tenure in months.
+
+    Returns:
+        A list of rows (dicts) representing the schedule.
+    """
     r = _monthly_rate(annual_rate)
     instalment = emi(principal, annual_rate, tenure_months)
     balance = principal
@@ -54,7 +109,23 @@ def amortisation_schedule(principal, annual_rate, tenure_months):
     return rows
 
 
-def outstanding_after(principal, annual_rate, tenure_months, months_paid):
+def outstanding_after(
+    principal: float,
+    annual_rate: float,
+    tenure_months: int,
+    months_paid: int,
+) -> float:
+    """Compute the outstanding balance after a given number of payments.
+
+    Args:
+        principal: Loan principal amount.
+        annual_rate: Annual nominal interest rate in percent.
+        tenure_months: Loan tenure in months.
+        months_paid: Number of EMIs already paid.
+
+    Returns:
+        Outstanding balance after the given payment count.
+    """
     if months_paid <= 0:
         return round(principal, 2)
     sched = amortisation_schedule(principal, annual_rate, tenure_months)
@@ -63,7 +134,20 @@ def outstanding_after(principal, annual_rate, tenure_months, months_paid):
     return sched[months_paid - 1]["balance"]
 
 
-def remaining_tenure(balance, annual_rate, instalment):
+def remaining_tenure(balance: float, annual_rate: float, instalment: float) -> int:
+    """Calculate remaining number of months needed to repay a balance.
+
+    Args:
+        balance: Remaining principal balance.
+        annual_rate: Annual nominal interest rate in percent.
+        instalment: Monthly payment amount.
+
+    Returns:
+        Remaining tenure in months (ceiled to a whole number).
+
+    Raises:
+        ValueError: If instalment is too small to ever reduce principal.
+    """
     r = annual_rate / 100
     if balance <= 0:
         return 0
@@ -75,8 +159,26 @@ def remaining_tenure(balance, annual_rate, instalment):
     return math.ceil(n)
 
 
-def prepayment_savings(principal, annual_rate, tenure_months, prepay_month, prepay_amount):
-    """Keep the same EMI after a lump-sum prepayment and shorten the tenure."""
+def prepayment_savings(
+    principal: float,
+    annual_rate: float,
+    tenure_months: int,
+    prepay_month: int,
+    prepay_amount: float,
+) -> dict[str, float | int]:
+    """Keep the same EMI after a lump-sum prepayment and shorten the tenure.
+
+    Args:
+        principal: Original loan principal amount.
+        annual_rate: Annual nominal interest rate in percent.
+        tenure_months: Original loan tenure in months.
+        prepay_month: Month number (1-indexed) when prepayment is made.
+        prepay_amount: Lump-sum amount paid towards principal.
+
+    Returns:
+        Dictionary containing the original EMI, months saved, new tenure, and
+        interest savings.
+    """
     instalment = emi(principal, annual_rate, tenure_months)
     sched = amortisation_schedule(principal, annual_rate, tenure_months)
     balance = sched[prepay_month - 1]["balance"]
@@ -99,7 +201,23 @@ def prepayment_savings(principal, annual_rate, tenure_months, prepay_month, prep
     }
 
 
-def compare_offers(principal, offers):
+def compare_offers(principal: float, offers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Compare multiple loan offers by total cost.
+
+    Each offer is expected to include a bank name, interest rate, tenure, and
+    optionally a processing fee percentage.
+
+    Args:
+        principal: Loan principal amount used for comparison across offers.
+        offers: List of offer dictionaries. Expected keys:
+            - bank: str
+            - rate: float (annual percent)
+            - tenure: int (months)
+            - processing_fee_pct: float (optional)
+
+    Returns:
+        List of computed offer summaries sorted by total_cost ascending.
+    """
     out = []
     for o in offers:
         e = emi(principal, o["rate"], o["tenure"])
@@ -116,7 +234,28 @@ def compare_offers(principal, offers):
     return out
 
 
-def eligible_amount(monthly_income, existing_emis, annual_rate, tenure_months, foir=0.5):
+def eligible_amount(
+    monthly_income: float,
+    existing_emis: float,
+    annual_rate: float,
+    tenure_months: int,
+    foir: float = 0.5,
+) -> float:
+    """Estimate eligible loan amount based on FOIR and desired tenure/rate.
+
+    FOIR (Fixed Obligation to Income Ratio) indicates the fraction of income
+    available for loan EMIs after existing obligations.
+
+    Args:
+        monthly_income: Gross monthly income.
+        existing_emis: Sum of existing monthly EMIs/obligations.
+        annual_rate: Annual nominal interest rate in percent.
+        tenure_months: Desired tenure in months.
+        foir: Fraction of income allowed for total obligations (default 0.5).
+
+    Returns:
+        Eligible principal amount rounded to 2 decimal places.
+    """
     available = monthly_income * foir - existing_emis
     if available <= 0:
         return 0.0
@@ -127,7 +266,18 @@ def eligible_amount(monthly_income, existing_emis, annual_rate, tenure_months, f
     return round(available * (f - 1) / (r * f), 2)
 
 
-def format_inr(amount):
+def format_inr(amount: float) -> str:
+    """Format a number into an INR currency string with Indian digit grouping.
+
+    Example:
+        1234567.89 -> "₹12,34,567.89"
+
+    Args:
+        amount: Amount to format.
+
+    Returns:
+        INR-formatted string with a rupee sign and 2 decimal places.
+    """
     neg = amount < 0
     amount = abs(round(amount, 2))
     whole, frac = f"{amount:.2f}".split(".")
@@ -143,14 +293,39 @@ def format_inr(amount):
     return ("-" if neg else "") + "₹" + whole + "." + frac
 
 
-def schedule_to_csv(rows, path):
+def schedule_to_csv(rows: list[dict[str, Any]], path: str) -> None:
+    """Write an amortisation schedule to a CSV file.
+
+    Args:
+        rows: Schedule rows as produced by amortisation_schedule().
+        path: Output file path.
+
+    Returns:
+        None
+    """
     with open(path, "w") as fh:
         fh.write("month,emi,interest,principal,balance\n")
         for r in rows:
             fh.write(f'{r["month"]},{r["emi"]},{r["interest"]},{r["principal"]},{r["balance"]}\n')
 
 
-def summary(principal, annual_rate, tenure_months, start=None):
+def summary(
+    principal: float,
+    annual_rate: float,
+    tenure_months: int,
+    start: Optional[date] = None,
+) -> dict[str, str]:
+    """Create a human-friendly loan summary for display purposes.
+
+    Args:
+        principal: Loan principal amount.
+        annual_rate: Annual nominal interest rate in percent.
+        tenure_months: Loan tenure in months.
+        start: Start date of the loan. Defaults to today's date.
+
+    Returns:
+        Dictionary of formatted fields including EMI, totals, and last EMI month.
+    """
     start = start or date.today()
     e = emi(principal, annual_rate, tenure_months)
     end_year = start.year + (start.month - 1 + tenure_months) // 12
