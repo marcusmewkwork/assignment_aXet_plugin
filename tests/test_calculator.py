@@ -92,8 +92,7 @@ def test_remaining_tenure_tc_rt_04() -> None:
 # TC-RT-05
 def test_remaining_tenure_raises_when_instalment_too_small() -> None:
     with pytest.raises(ValueError, match="instalment too small to repay the loan"):
-        remaining_tenure(balance=100_000, annual_rate=10, instalment=9_000)
-
+        remaining_tenure(balance=100_000, annual_rate=12, instalment=900)
 
 # TC-INR-01
 def test_format_inr_indian_grouping_and_decimals() -> None:
