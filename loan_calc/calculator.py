@@ -13,10 +13,10 @@ def _monthly_rate(annual_rate: float) -> float:
         annual_rate: Annual nominal interest rate in percent (e.g. 10.5 for 10.5% p.a.).
 
     Returns:
-        Monthly interest rate as a decimal, rounded to 4 decimal places.
+        Monthly interest rate as a decimal.
     """
-    r = round(annual_rate / 1200, 4)
-    return r
+
+    return annual_rate / 1200
 
 
 def emi(principal: float, annual_rate: float, tenure_months: int) -> float:
