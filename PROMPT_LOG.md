@@ -110,3 +110,8 @@ Add your other proposed tests with fixed values: TC-AS-02, TC-AS-03, TC-OA-03, T
 - **aXet's answer (short summary):** In Entry 5's test file, aXet wrote `remaining_tenure(100_000, 10, 9_000)` and expected "instalment too small".
 - **Was it right?** No. At 10% p.a., monthly interest on ₹1,00,000 is ₹833.33, so ₹9,000 is plenty. The test only passed because of bug #3 (10% was read as 10% per month = ₹10,000). Once the bug was fixed, the test failed. This is the case where the test is wrong, not the code. aXet had also changed it from its own original proposal (TC-RT-03: 12%, ₹900).
 - **What I did about it:** Changed the test back to 12% with a ₹900 instalment (monthly interest ₹1,000, so ₹900 really is too small). Committed it separately from the code fix.
+
+
+
+## Note on commit history
+Commit `e334ee1` is labelled "Fix: remaining_tenure used annual rate as monthly rate", but it actually contains **bug fix #2** (amortisation schedule `range(1, tenure_months + 1)`). I used the wrong commit message by mistake. The real remaining_tenure fix (bug #3) is the next commit. Each bug is still in its own commit. I didn't rewrite history because it was already pushed.
