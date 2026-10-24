@@ -84,3 +84,12 @@ Add your other proposed tests with fixed values: TC-AS-02, TC-AS-03, TC-OA-03, T
 - **Was it right?** Yes, the diagnosis and fix are correct. One small slip: it called it "truncation", but it's rounding (for example, 8.5% gives 0.0070833…, which rounds *up* to 0.0071). Worth noting why the assignment's 9% benchmark never caught this: 9/1200 = 0.0075 exactly, so rounding to 4 dp changes nothing. The same goes for 12% and 0%.
 - **What I did about it:** Applied the fix by hand (one function plus its docstring). Re-ran the tests: the two 10% tests now pass. Committed the fix on its own as bug fix #1.
 
+## Entry 7
+- **Step:** Diagnose failing tests: bug #2 (schedule off-by-one)
+- **Context given:** `@loan_calc/calculator.py`, `@tests/test_calculator.py`
+- **Prompt (exact):**
+  > @loan_calc/calculator.py @tests/test_calculator.py These 3 tests fail: test_one_month_tenure_emi_and_schedule_required (0 rows instead of 1), test_amortisation_schedule_length_is_exactly_tenure_and_ends_at_zero_balance (11 rows instead of 12), and test_schedule_zero_rate_pays_equal_principal_each_month. Explain the root cause and propose the smallest fix to calculator.py. Show me the change, but don't apply it yet. Don't change the tests.
+- **aXet's answer (short summary):** `range(1, tenure_months)` stops one short, so a 1-month loan gets 0 rows and a 12-month loan gets 11. It also means the "last month" block never runs. Fix: `range(1, tenure_months + 1)`.
+- **Was it right?** Yes. A one-line fix that explains all 3 failures. Its Entry 1 explanation had already spotted this loop, but called it an "inconsistency", and the first test file even locked it in (expecting 11 rows).
+- **What I did about it:** Applied the one-line fix. 3 schedule tests now pass (3 failed, 25 passed). Committed it on its own as bug fix #2.
+
