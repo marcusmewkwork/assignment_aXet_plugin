@@ -59,7 +59,7 @@ Not used by the CLI:
 ### Core maths
 
 **`_monthly_rate(annual_rate)`**
-Converts an annual % rate into a monthly decimal rate: `annual_rate / 1200`, rounded to 4 decimal places. The leading underscore marks it as a private helper: it's used inside the module and isn't part of the public API.
+Converts an annual % rate into a monthly decimal rate: `annual_rate / 1200`, at full precision. Rounding happens only on final money values, never on the rate. The leading underscore marks it as a private helper: it's used inside the module and isn't part of the public API.
 
 **`emi(principal, annual_rate, tenure_months)`**
 Returns the EMI, rounded to 2 dp.
@@ -91,7 +91,7 @@ The balance after `months_paid` instalments, read from the schedule.
 ### Prepayment
 
 **`remaining_tenure(balance, annual_rate, instalment)`**
-How many months a fixed instalment takes to clear a balance, using `n = −log(1 − B·r / E) / log(1 + r)`, rounded up. (B = balance, r = rate, E = instalment.)
+How many months a fixed instalment takes to clear a balance, using `n = −log(1 − B·r / E) / log(1 + r)`, rounded up. (B = balance, r = rate, E = instalment.) The monthly rate comes from `_monthly_rate()`, the same as in the rest of the module.
 - Returns 0 if there's no balance.
 - At 0% interest, returns balance ÷ instalment, rounded up.
 - Raises `ValueError` if the instalment doesn't even cover the interest, because then the loan would never shrink.
@@ -103,7 +103,7 @@ The scenario: pay a lump sum after month `prepay_month`, keep the same EMI, and 
 3. If anything is left, ask `remaining_tenure()` how many more months are needed.
 4. Compare total interest with and without the prepayment.
 
-It returns `emi`, `months_saved`, `new_tenure`, `interest_saved` and `interest_paid_before_prepayment`. It assumes every remaining month is a full EMI.
+It returns `emi`, `months_saved`, `new_tenure`, `interest_saved` and `interest_paid_before_prepayment`. It assumes every remaining month is a full EMI. If the prepayment is larger than the outstanding balance, it is capped at the balance, because you only pay what you owe.
 
 ### Other helpers
 
@@ -130,11 +130,18 @@ Writes schedule rows to a CSV file with the header `month,emi,interest,principal
 **`summary(principal, annual_rate, tenure_months, start=None)`**
 Returns a display-ready dict of strings: `principal`, `rate`, `tenure`, `emi`, `total_interest`, `total_payment`, `last_emi` (as `YYYY-MM`) and `currency`. `start` defaults to today, and `last_emi` is `start` plus `tenure_months` months. The CLI prints this.
 
-## Known issues (suspected, to be confirmed with tests)
+## Bugs found and fixed
 
-1. **`amortisation_schedule` stops one month early.** The loop is `range(1, tenure_months)`, so it makes n−1 rows, and the "last month" branch never runs. `outstanding_after`'s `len(sched)` check hides this rather than fixing it.
-2. **`remaining_tenure` uses `annual_rate / 100`.** That's a yearly rate, not a monthly one, unlike the rest of the module.
-3. **No input validation outside `emi()`.** Examples: `prepay_month` outside 1..tenure, a prepayment larger than the balance, negative rates. These will be covered by tests.
+| # | Bug | Effect | Fix | Commit |
+|---|---|---|---|---|
+| 1 | `_monthly_rate` rounded the rate to 4 dp | Wrong EMI for rates like 10% (₹9,623.73 instead of ₹9,650.22). Hidden at 9%, because 9/1200 = 0.0075 exactly | Return `annual_rate / 1200` | `0708f71` |
+| 2 | `amortisation_schedule` looped `range(1, tenure_months)` | Last month missing (11 rows for 12 months; 0 rows for 1 month) | `range(1, tenure_months + 1)` | `e334ee1` (mislabelled, see the prompt log) |
+| 3 | `remaining_tenure` used `annual_rate / 100` | Annual rate treated as monthly, so valid instalments were rejected as "too small" | Use `_monthly_rate()` | `cc490a5` |
+| 4 (extra) | `prepayment_savings` counted an over-large prepayment in full | Negative "interest saved" | Cap the prepayment at the balance | `12f135a` |
+
+## Tests
+
+Run `python -m pytest --cov=loan_calc --cov-report=term-missing`. 29 tests, 100% line coverage. Expected values come from independent calculations (the standard EMI, present-value and remaining-tenure formulas, and hand arithmetic), not from the code itself. 
 
 ## Where the AI explanation was wrong
 
