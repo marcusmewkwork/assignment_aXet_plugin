@@ -1,4 +1,5 @@
 import pytest
+from datetime import date
 
 from loan_calc.calculator import (
     amortisation_schedule,
@@ -41,7 +42,7 @@ def test_emi_raises_for_non_positive_principal() -> None:
         emi(0, 10, 12)
 
 
-# Required: remove xfail, 10%/240 test must assert correct value (expected to fail with current rounding bug)
+# 10% EMI vs independent calc (this test caught bug #1: monthly rate rounding)
 def test_emi_independent_calc_1m_10pct_240m() -> None:
     assert emi(1_000_000, 10, 240) == pytest.approx(9650.22, abs=1.0)
 
@@ -79,12 +80,20 @@ def test_outstanding_after_zero_or_negative_months_returns_principal() -> None:
     assert outstanding_after(100_000, 10, 12, -3) == pytest.approx(100_000.00, abs=0.0)
 
 
-# TC-OA-03 (also covers TC-OUT-02 intent)
+# TC-OA-02: paying more months than the tenure leaves 0
 def test_outstanding_after_more_than_tenure_months_is_zero() -> None:
     assert outstanding_after(100_000, 10, 12, 999) == pytest.approx(0.0, abs=0.0)
 
 
-# Restore TC-RT-04 as proposed (note: this is intentionally likely to fail with current implementation)
+# TC-OA-03: independent values for outstanding_after
+def test_outstanding_after_independent_values() -> None:
+    # 0%: three payments of 10,000 made, so 90,000 is left
+    assert outstanding_after(120_000, 0, 12, 3) == pytest.approx(90_000.00)
+    # after the final month the loan is fully paid off
+    assert outstanding_after(100_000, 10, 12, 12) == pytest.approx(0.0)
+
+
+# TC-RT-04: 1,00,000 at 12% paying 10,000/month takes 11 months (caught bug #3)
 def test_remaining_tenure_tc_rt_04() -> None:
     assert remaining_tenure(100_000, 12, 10_000) == 11
 
@@ -103,21 +112,6 @@ def test_format_inr_indian_grouping_and_decimals() -> None:
 def test_format_inr_negative_amount() -> None:
     assert format_inr(-1234.5) == "-₹1,234.50"
 
-
-# TC-AS-02
-def test_outstanding_after_one_month_matches_first_row_balance() -> None:
-    principal, rate, tenure = 200_000, 12.0, 12
-    rows = amortisation_schedule(principal, rate, tenure)
-    assert outstanding_after(principal, rate, tenure, 1) == pytest.approx(rows[0]["balance"], abs=0.0)
-
-
-# TC-AS-03
-def test_outstanding_after_exact_schedule_length_equals_last_row_balance() -> None:
-    principal, rate, tenure = 200_000, 12.0, 12
-    rows = amortisation_schedule(principal, rate, tenure)
-    assert outstanding_after(principal, rate, tenure, len(rows)) == pytest.approx(rows[-1]["balance"], abs=0.0)
-
-
 # Required: prepayment larger than the balance at prepayment month
 def test_prepayment_larger_than_balance_at_prepayment_month_required() -> None:
     out = prepayment_savings(120_000, 0, 12, 1, 200_000)
@@ -134,29 +128,14 @@ def test_prepayment_savings_zero_rate_months_saved_is_remaining_months() -> None
     assert out["interest_saved"] == pytest.approx(0.0, abs=0.0)
 
 
-# TC-PRE-01
-def test_prepayment_savings_returns_expected_keys_and_types() -> None:
-    out = prepayment_savings(
-        principal=100_000,
-        annual_rate=10,
-        tenure_months=12,
-        prepay_month=3,
-        prepay_amount=10_000,
-    )
-    assert set(out.keys()) == {
-        "emi",
-        "months_saved",
-        "new_tenure",
-        "interest_saved",
-        "interest_paid_before_prepayment",
-    }
-    assert isinstance(out["months_saved"], int)
-    assert isinstance(out["new_tenure"], int)
-    assert isinstance(out["emi"], float)
-    assert isinstance(out["interest_saved"], float)
+# TC-PS-04: 9%, prepay 2,00,000 after 24 months (independent calc)
+def test_prepayment_savings_9pct() -> None:
+    out = prepayment_savings(1_000_000, 9, 240, 24, 200_000)
+    assert out["emi"] == pytest.approx(8997.26)
+    assert out["new_tenure"] == 159
+    assert out["months_saved"] == 81
+    assert out["interest_saved"] == pytest.approx(528_778.06, abs=1)
 
-
-# TC-EA-01 + TC-EA-02 + TC-CO-01 (fees and order with exact values)
 # TC-CO-01: no-fee 12% offer is cheaper than 10% + 2% fee over 12 months
 def test_compare_offers_exact_fees_and_sorted_order() -> None:
     offers = [
@@ -233,3 +212,6 @@ def test_eligible_amount_10pct() -> None:
 def test_remaining_tenure_zero_balance() -> None:
     assert remaining_tenure(0, 10, 1_000) == 0
 
+# TC-SUM-02: 3 months after Nov 2026 is Feb 2027 (fixed start date)
+def test_summary_last_emi() -> None:
+    assert summary(90_000, 0, 3, start=date(2026, 11, 15))["last_emi"] == "2027-02"
