@@ -53,7 +53,7 @@ def total_payment(principal: float, annual_rate: float, tenure_months: int) -> f
         tenure_months: Loan tenure in months.
 
     Returns:
-        Total payment (sum of all EMIs) rounded to 2 decimal places.
+        Total payment (EMI multiplied by the number of months), rounded to 2 decimal places.
     """
     return round(emi(principal, annual_rate, tenure_months) * tenure_months, 2)
 
@@ -168,16 +168,20 @@ def prepayment_savings(
 ) -> dict[str, float | int]:
     """Keep the same EMI after a lump-sum prepayment and shorten the tenure.
 
+    If prepay_amount is larger than the outstanding balance at prepay_month,
+    it is capped at that balance (you only pay what you owe).
+
     Args:
         principal: Original loan principal amount.
         annual_rate: Annual nominal interest rate in percent.
         tenure_months: Original loan tenure in months.
-        prepay_month: Month number (1-indexed) when prepayment is made.
+        prepay_month: Month number (1-indexed) after which the prepayment is
+            made. Should be between 1 and tenure_months (not validated).
         prepay_amount: Lump-sum amount paid towards principal.
 
     Returns:
-        Dictionary containing the original EMI, months saved, new tenure, and
-        interest savings.
+        Dictionary with keys: emi, months_saved, new_tenure, interest_saved,
+        and interest_paid_before_prepayment.
     """
     instalment = emi(principal, annual_rate, tenure_months)
     sched = amortisation_schedule(principal, annual_rate, tenure_months)
