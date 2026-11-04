@@ -19,7 +19,7 @@ All amounts are in Indian rupees (INR).
 | `loan_calc/calculator.py` | All the logic: 13 functions and one constant (`DEFAULT_CURRENCY = "INR"`). |
 | `loan_calc/__init__.py` | One line: `from .calculator import *`. It re-exports every public name, so other code can write `from loan_calc import emi`. `_monthly_rate` is not exported, because `import *` skips names that start with `_`. |
 | `cli.py` | The command-line entry point. It reads the principal, the annual rate (%) and the tenure (months), then prints `summary()` as JSON. `--schedule` also prints every schedule row. Giving both `--prepay-month` and `--prepay-amount` also prints `prepayment_savings()`. |
-| `tests/` | Empty in the starter (only `.gitkeep`). |
+| `tests/` | `tests/test_calculator.py` | 29 pytest tests, added during this assignment (the starter had none). |
 
 ## Key ideas
 
@@ -41,7 +41,7 @@ cli.py
  │                         └─ emi
  └─ prepayment_savings ───┬─ emi
                           ├─ amortisation_schedule
-                          ├─ remaining_tenure
+                          ├─ remaining_tenure ── _monthly_rate
                           └─ total_interest
 
 Not used by the CLI:
@@ -81,7 +81,7 @@ Returns a list of dicts, one per month, with the keys `month` (starting at 1), `
 - principal part = EMI − interest
 - the balance goes down by the principal part
 
-The code intends the last month to pay off exactly what's left, so rounding leftovers are cleared. The displayed balance is never below 0.
+The last month pays off exactly what's left, so rounding leftovers are cleared and the final balance is 0.
 
 **`outstanding_after(principal, annual_rate, tenure_months, months_paid)`**
 The balance after `months_paid` instalments, read from the schedule.
@@ -137,11 +137,11 @@ Returns a display-ready dict of strings: `principal`, `rate`, `tenure`, `emi`, `
 | 1 | `_monthly_rate` rounded the rate to 4 dp | Wrong EMI for rates like 10% (₹9,623.73 instead of ₹9,650.22). Hidden at 9%, because 9/1200 = 0.0075 exactly | Return `annual_rate / 1200` | `0708f71` |
 | 2 | `amortisation_schedule` looped `range(1, tenure_months)` | Last month missing (11 rows for 12 months; 0 rows for 1 month) | `range(1, tenure_months + 1)` | `e334ee1` (mislabelled, see the prompt log) |
 | 3 | `remaining_tenure` used `annual_rate / 100` | Annual rate treated as monthly, so valid instalments were rejected as "too small" | Use `_monthly_rate()` | `cc490a5` |
-| 4 (extra) | `prepayment_savings` counted an over-large prepayment in full | Negative "interest saved" | Cap the prepayment at the balance | `12f135a` |
+| 4 (extra) | `prepayment_savings` counted an over-large prepayment in full | Negative "interest saved" | Cap the prepayment at the balance | `12f135a` | 5 (extra) | `cli.py` help text had a bare `%` | Crashes on Python 3.14 (argparse rejects it) | Escape it as `%%` | `xxxxxxx` |
 
 ## Tests
 
-Run `python -m pytest --cov=loan_calc --cov-report=term-missing`. 29 tests, 100% line coverage. Expected values come from independent calculations (the standard EMI, present-value and remaining-tenure formulas, and hand arithmetic), not from the code itself. 
+Run `python -m pytest --cov=loan_calc --cov-report=term-missing`. 29 tests, 100% line coverage. Expected numbers come from independent calculations (the standard EMI, present-value and remaining-tenure formulas, and hand arithmetic), not from running the code. Two tests (the CSV writer and the summary formatting) check structure and formatting rather than calculated values.
 
 ## Where the AI explanation was wrong
 
