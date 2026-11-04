@@ -137,7 +137,7 @@ Returns a display-ready dict of strings: `principal`, `rate`, `tenure`, `emi`, `
 | 1 | `_monthly_rate` rounded the rate to 4 dp | Wrong EMI for rates like 10% (₹9,623.73 instead of ₹9,650.22). Hidden at 9%, because 9/1200 = 0.0075 exactly | Return `annual_rate / 1200` | `0708f71` |
 | 2 | `amortisation_schedule` looped `range(1, tenure_months)` | Last month missing (11 rows for 12 months; 0 rows for 1 month) | `range(1, tenure_months + 1)` | `e334ee1` (mislabelled, see the prompt log) |
 | 3 | `remaining_tenure` used `annual_rate / 100` | Annual rate treated as monthly, so valid instalments were rejected as "too small" | Use `_monthly_rate()` | `cc490a5` |
-| 4 (extra) | `prepayment_savings` counted an over-large prepayment in full | Negative "interest saved" | Cap the prepayment at the balance | `12f135a` | 5 (extra) | `cli.py` help text had a bare `%` | Crashes on Python 3.14 (argparse rejects it) | Escape it as `%%` | `xxxxxxx` |
+| 4 (extra) | `prepayment_savings` counted an over-large prepayment in full | Negative "interest saved" | Cap the prepayment at the balance | `12f135a` | 5 (extra) | `cli.py` help text had a bare `%` | Crashes on Python 3.14 (argparse rejects it) | Escape it as `%%` | `88bdbdd` |
 
 ## Tests
 
