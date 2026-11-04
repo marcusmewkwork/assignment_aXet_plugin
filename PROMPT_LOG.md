@@ -21,7 +21,7 @@ Each entry records the exact prompt I typed, what aXet said, and whether it was 
   > Add Google-style docstrings and type hints to every public function in calculator.py. Do NOT change any logic, formulas, rounding or loop ranges. Only add docstrings and type annotations. If you think something is a bug, tell me in chat instead of changing it.
 - **aXet's answer (short summary):** Added docstrings and type hints to all functions. Flagged one suspected bug: `amortisation_schedule` loops `range(1, tenure_months)`, so the final month is missing.
 - **Was it right?** Mostly. I checked `git diff`, and no logic was changed. But it didn't mention the `remaining_tenure` `annual_rate / 100` issue it had flagged in Entry 1, so its bug-spotting isn't consistent. The `total_payment` docstring said "sum of all EMIs", but the code does EMI × months.
-- **What I did about it:** Accepted the changes after reviewing the diff. Fixed the `total_payment` docstring wording by hand. Still treating both suspected bugs as unconfirmed until tests show them.
+- **What I did about it:** Accepted the changes after reviewing the diff. Planned to fix the `total_payment` docstring wording by hand, but missed it at first. The final review (Entry 12) caught this, and it was fixed in commit `72be764`. Still treating both suspected bugs as unconfirmed until tests show them.
 
 ## Entry 3
 - **Step:** Propose test cases
@@ -39,17 +39,19 @@ Each entry records the exact prompt I typed, what aXet said, and whether it was 
 - **Step:** Write the test file
 - **Context given:** `@loan_calc/calculator.py`
 - **Prompt (exact):**
-  > @loan_calc/calculator.py Write the test cases you proposed into tests/test_calculator.py using pytest, with these changes:
-  
+  ```text
+  @loan_calc/calculator.py Write the test cases you proposed into tests/test_calculator.py using pytest, with these changes:
+
   TC-SUM-01: use principal 90,000 (not 100,000), so the expected EMI is ₹30,000.00, the total payment ₹90,000.00 and the total interest ₹0.00. Your original expected values were wrong, because 33,333.33 × 3 = 99,999.99.
-  
+
   Give every test a fixed expected number. No “≈” without a value, and don’t recompute the formula inside the test. TC-RT-04 should expect 11.
-  
+
   Add a test: emi(1_000_000, 10, 240) should be 9650.22 (±1). I got this from an independent calculation.
-  
+
   Use pytest.approx for float comparisons, and tmp_path for the CSV test.
-  
+
   Do NOT change calculator.py.
+  ```
 - **aXet's answer (short summary):** Wrote 17 tests, ran them by itself, and got 1 failure: the 10% EMI was 9623.73 instead of 9650.22, which it traced to `_monthly_rate` rounding to 4 dp. It then marked that test `xfail` so the suite showed "16 passed".
 - **Was it right?** No. The diagnosis was right, but:
   - marking the failing test xfail hid a real bug
@@ -62,15 +64,17 @@ Each entry records the exact prompt I typed, what aXet said, and whether it was 
 - **Step:** Correct the test file
 - **Context given:** `@tests/test_calculator.py`, `@loan_calc/calculator.py`
 - **Prompt (exact):**
-  > @/tests/test_calculator.py @/loan_calc/calculator.py 
-Fix this test file. Tests must check CORRECT loan behaviour, not copy what the current code does. It’s expected that some tests will FAIL; that’s how I find the bugs. Do not use xfail or skip, do not run the tests, and do NOT change calculator.py.
+  ```text
+  @/tests/test_calculator.py @/loan_calc/calculator.py
+  Fix this test file. Tests must check CORRECT loan behaviour, not copy what the current code does. It’s expected that some tests will FAIL; that’s how I find the bugs. Do not use xfail or skip, do not run the tests, and do NOT change calculator.py.
 
-Remove the xfail from the 10% EMI test.
-Delete test_monthly_rate_rounding_to_4_decimals.
-Schedule length: a 12-month loan must have 12 rows, and the last row’s balance must be 0.
-Restore TC-RT-04 as proposed: remaining_tenure(100_000, 12, 10_000) == 11.
-Add the required tests: emi(1_000_000, 9, 240) ≈ 8997.26 (±1); 1-month tenure: emi(10_000, 12, 1) == 10100.00, and its schedule has exactly 1 row with balance 0; huge principal: emi(1_000_000_000_000, 0, 360) ≈ 2777777777.78; prepayment larger than the balance: prepayment_savings(120_000, 0, 12, 1, 200_000) gives months_saved 11, new_tenure 1, interest_saved 0.0.
-Add your other proposed tests with fixed values: TC-AS-02, TC-AS-03, TC-OA-03, TC-PS-02, TC-EA-01, TC-EA-02, and TC-CO-01 with exact fees and order.
+  Remove the xfail from the 10% EMI test.
+  Delete test_monthly_rate_rounding_to_4_decimals.
+  Schedule length: a 12-month loan must have 12 rows, and the last row’s balance must be 0.
+  Restore TC-RT-04 as proposed: remaining_tenure(100_000, 12, 10_000) == 11.
+  Add the required tests: emi(1_000_000, 9, 240) ≈ 8997.26 (±1); 1-month tenure: emi(10_000, 12, 1) == 10100.00, and its schedule has exactly 1 row with balance 0; huge principal: emi(1_000_000_000_000, 0, 360) ≈ 2777777777.78; prepayment larger than the balance: prepayment_savings(120_000, 0, 12, 1, 200_000) gives months_saved 11, new_tenure 1, interest_saved 0.0.
+  Add your other proposed tests with fixed values: TC-AS-02, TC-AS-03, TC-OA-03, TC-PS-02, TC-EA-01, TC-EA-02, and TC-CO-01 with exact fees and order.
+  ```
 - **aXet's answer (short summary):** Removed the xfail, fixed the schedule-length test (12 rows), restored TC-RT-04, and added the required 9%, 1-month, huge-principal and prepayment-over-balance tests.
 - **Was it right?** Partly. Two tests labelled "TC-AS-02" and "TC-AS-03" weren't the proposed tests: they only compared `outstanding_after` against `amortisation_schedule` (code checking code, with no independent numbers). A comment said "TC-EA-01 + TC-EA-02", but `eligible_amount` wasn't tested or even imported.
 - **What I did about it:** Wrote 5 tests by hand: the real TC-AS-02 and TC-AS-03, plus 3 `eligible_amount` tests with independently calculated values. Result: 28 tests, 8 failing.
@@ -108,15 +112,17 @@ Add your other proposed tests with fixed values: TC-AS-02, TC-AS-03, TC-OA-03, T
 - **Prompt (exact):**
   > (none: found by reviewing the test myself)
 - **aXet's answer (short summary):** In Entry 5's test file, aXet wrote `remaining_tenure(100_000, 10, 9_000)` and expected "instalment too small".
-- **Was it right?** No. At 10% p.a., monthly interest on ₹1,00,000 is ₹833.33, so ₹9,000 is plenty. The test only passed because of bug #3 (10% was read as 10% per month = ₹10,000). Once the bug was fixed, the test failed. This is the case where the test is wrong, not the code. aXet had also changed it from its own original proposal (TC-RT-03: 12%, ₹900).
+- **Was it right?** No. At 10% p.a., monthly interest on ₹1,00,000 is ₹833.33, so ₹9,000 is plenty. The test only passed because of bug #3 (10% was read as 10% per month = ₹10,000). Once the bug was fixed, the test failed. This is the case where the test is wrong, not the code. aXet had also changed it from its own original proposal (TC-RT-03: 12%, ₹900; it's labelled TC-RT-05 in the test file).
 - **What I did about it:** Changed the test back to 12% with a ₹900 instalment (monthly interest ₹1,000, so ₹900 really is too small). Committed it separately from the code fix.
 
 ## Entry 10
 - **Step:** Diagnose failing test: compare_offers (test was wrong)
 - **Context given:** `@loan_calc/calculator.py`, `@tests/test_calculator.py`
 - **Prompt (exact):**
-  > @/loan_calc/calculator.py @/tests/test_calculator.py 
-test_compare_offers_exact_fees_and_sorted_order fails: out[0][“processing_fee”] is 0.0, expected 4000.0. For a principal of 200,000 over 12 months, work out by hand the total interest, processing fee and total cost for both offers (10% with a 2% fee, and 12% with no fee). Then tell me whether the code or the test is wrong. Don’t change any files.
+  ```text
+  @/loan_calc/calculator.py @/tests/test_calculator.py
+  test_compare_offers_exact_fees_and_sorted_order fails: out[0][“processing_fee”] is 0.0, expected 4000.0. For a principal of 200,000 over 12 months, work out by hand the total interest, processing fee and total cost for both offers (10% with a 2% fee, and 12% with no fee). Then tell me whether the code or the test is wrong. Don’t change any files.
+  ```
 - **aXet's answer (short summary):** Worked out both offers by hand. Total cost is about ₹15,002.60 for 10% + 2% fee, and about ₹13,231.96 for 12% with no fee. So the no-fee offer is cheaper, and the test's expected order is wrong.
 - **Was it right?** The conclusion was right, but its arithmetic was slightly off. The correct EMIs are 17,583.18 and 17,769.76 (it said 17,583.55 and 17,769.33), giving total costs of ₹14,998.16 and ₹13,237.12. Also, this test came from aXet in the first place: it assumed the lower rate always wins, without checking the fee.
 - **What I did about it:** Fixed the test, not the code: corrected the order, and added exact total-cost checks.
@@ -125,11 +131,27 @@ test_compare_offers_exact_fees_and_sorted_order fails: out[0][“processing_fee�
 - **Step:** Diagnose failing test: prepayment larger than the balance (extra edge-case bug)
 - **Context given:** `@loan_calc/calculator.py`, `@tests/test_calculator.py`
 - **Prompt (exact):**
-  > @/loan_calc/calculator.py @/tests/test_calculator.py 
-test_prepayment_larger_than_balance_at_prepayment_month_required fails: prepayment_savings(120_000, 0, 12, 1, 200_000) gives interest_saved = -90000.0, expected 0.0. Explain the root cause. Then propose two options with their pros and cons: (a) cap the prepayment at the outstanding balance, or (b) raise a ValueError. Show the change for each, but don’t apply anything. Don’t change the tests.
+  ```text
+  @/loan_calc/calculator.py @/tests/test_calculator.py
+  test_prepayment_larger_than_balance_at_prepayment_month_required fails: prepayment_savings(120_000, 0, 12, 1, 200_000) gives interest_saved = -90000.0, expected 0.0. Explain the root cause. Then propose two options with their pros and cons: (a) cap the prepayment at the outstanding balance, or (b) raise a ValueError. Show the change for each, but don’t apply anything. Don’t change the tests.
+  ```
 - **aXet's answer (short summary):** When the prepayment is larger than the balance, the loan is treated as closed, but `new_total` still includes the full prepayment. The ₹90,000 overpayment shows up as "interest", so interest_saved = −90,000. It offered (a) cap the prepayment at the balance, or (b) raise ValueError.
 - **Was it right?** Yes, the diagnosis was correct and both options were reasonable. Its final summary had a garbled diff (lines merged, a stray "javascript" code block), so I used the clearer first version.
 - **What I did about it:** Chose (a), capping, because a bank would only take the payoff amount, and it matches the test. All 28 tests pass. Committed it as a separate fix. Option (b) may come back in the stretch goal (validation).
 
 ## Note on commit history
 Commit `e334ee1` is labelled "Fix: remaining_tenure used annual rate as monthly rate", but it actually contains **bug fix #2** (amortisation schedule `range(1, tenure_months + 1)`). I used the wrong commit message by mistake. The real remaining_tenure fix (bug #3) is the next commit. Each bug is still in its own commit. I didn't rewrite history because it was already pushed.
+
+Commit `b71047b` ("Add prompt log with first aXet explanation") added an empty file by mistake. The content arrived in the next commit, `9ecbf29`.
+
+## Entry 12
+- **Step:** Final review before submitting
+- **Context given:** The whole repo, reviewed read-only by a second AI tool (Claude Code in WSL), not aXet
+- **Prompt (exact):** An audit prompt asking it to check each acceptance criterion, recompute every expected test value independently, and flag weak tests and outdated docs. No changes allowed.
+- **Result (short summary):** All 3 bugs fixed one commit each, 29 tests passing, 100% coverage, and every expected value correct. It also found:
+  - `cli.py` crashes on Python 3.14, because argparse rejects the bare `%` in the help text
+  - Entry 2 claimed a docstring fix I hadn't actually made
+  - 3 outdated statements in ARCHITECTURE.md
+  - 3 weak tests (two compared code with code, one only checked keys), plus stale test comments
+- **Was it right?** Yes. I checked its key claims: the `%%` fix works, and the new prepayment test's expected values (159 / 81 / ₹5,28,778.06) are correct by independent calculation.
+- **What I did about it:** Fixed the CLI (`88bdbdd`) and the docstrings (`72be764`). Replaced the weak tests with independent-value tests (`e4548de`). Updated ARCHITECTURE.md and this log. Lesson: one final, independent review catches things you stop seeing yourself.
